@@ -14,11 +14,34 @@ void setup()
 	servos.disable();
 }
 
+
+void report_position()
+{
+	Serial.print("p");
+
+	for(int i = 1 ; i <= 8 ; i++)
+	{
+		float pos = servos.position(i);
+		Serial.print(" ");
+		Serial.print(pos, 2);
+	}
+
+	Serial.println();
+}
+
+uint32_t last_position;
+
 void loop()
 {
 	// try to see if anyone is out there
 	if(!Serial.available())
+	{
+		if (millis() - last_position < 500)
+			return;
+		last_position = millis();
+		report_position();
 		return;
+	}
 
 	const int cmd = Serial.read();
 	if (cmd == 'i')
@@ -75,16 +98,7 @@ void loop()
 
 	if (cmd == 'p')
 	{
-		Serial.print("p");
-
-		for(int i = 1 ; i <= 8 ; i++)
-		{
-			float pos = servos.position(i);
-			Serial.print(" ");
-			Serial.print(pos, 2);
-		}
-
-		Serial.println();
+		report_position();
 		return;
 	}
 
@@ -119,8 +133,48 @@ void loop()
 	if (cmd == '0')
 	{
 		Serial.println("STRAIGHT");
-		for(uint8_t i = 1 ; i < 8 ; i++)
-			servos.move(i, 0, 5000, true);
+		for(uint8_t i = 1 ; i <= 8 ; i++)
+			servos.move(i, 0, 2000, true);
+		servos.enable();
+		servos.start();
+		return;
+	}
+
+	if (cmd == '9')
+	{
+		Serial.println("CURL");
+		for(uint8_t i = 1 ; i <= 8 ; i++)
+			servos.move(i, -90, 5000, true);
+		servos.enable();
+		servos.start();
+		return;
+	}
+
+	if (cmd == '8')
+	{
+		Serial.println("CURL2");
+		for(uint8_t i = 1 ; i <= 8 ; i++)
+			servos.move(i, i % 2 ? 90 : -90, 5000, true);
+		servos.enable();
+		servos.start();
+		return;
+	}
+		
+	if (cmd == '7')
+	{
+		Serial.println("WRAP");
+		for(uint8_t i = 1 ; i <= 8 ; i++)
+			servos.move(i, (i % 3 == 2) ? 90 : -90, 5000, true);
+		servos.enable();
+		servos.start();
+		return;
+	}
+
+	if (cmd == '6')
+	{
+		Serial.println("WRAP2");
+		for(uint8_t i = 1 ; i <= 8 ; i++)
+			servos.move(i, (i % 3 == 1) ? 90 : -90, 5000, true);
 		servos.enable();
 		servos.start();
 		return;
