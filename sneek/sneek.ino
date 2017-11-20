@@ -116,6 +116,16 @@ void loop()
 		return;
 	}
 
+	if (cmd == '0')
+	{
+		Serial.println("STRAIGHT");
+		for(uint8_t i = 1 ; i < 8 ; i++)
+			servos.move(i, 0, 5000, true);
+		servos.enable();
+		servos.start();
+		return;
+	}
+
 
 	Serial.println("?");
 }

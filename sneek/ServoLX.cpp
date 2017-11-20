@@ -220,10 +220,12 @@ void ServoLX::move(uint8_t which, float angle, int ms, bool wait)
 	if (angle > +angle_limit)
 		angle = +angle_limit;
 
-	uint16_t cmd_angle = (uint16_t)((angle + 120) * 0.24);
+	uint16_t cmd_angle = (uint16_t)((angle + 120) / 0.24);
 	uint8_t buf[] = {
 		(uint8_t)(cmd_angle >> 0),
 		(uint8_t)(cmd_angle >> 8),
+		(uint8_t)(ms >> 0),
+		(uint8_t)(ms >> 8),
 	};
 
 	send(
