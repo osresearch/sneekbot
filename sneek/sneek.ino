@@ -17,28 +17,54 @@ void setup()
 void loop()
 {
 	// try to see if anyone is out there
-	while(Serial.read() == -1)
-		;
-	Serial.println("probe id:");
-	int id = servos.getid();
-	Serial.println(id);
-	if (id < 0)
+	if(!Serial.available())
 		return;
 
-	int pos = servos.position(id);
-	Serial.println(pos);
-	return;
-
-	// read all of the positions and write to the serial port
-
-	Serial.print("position: ");
-
-	for(int i = 0 ; i < 8 ; i++)
+	const int cmd = Serial.read();
+	if (cmd == 'i')
 	{
-		int pos = servos.position(i);
-		Serial.print(" ");
-		Serial.print(pos);
+		Serial.print("i=");
+		int id = servos.getid();
+		Serial.println(id);
+		return;
 	}
 
-	Serial.println();
+	if (cmd == 'I')
+	{
+		Serial.print("I=");
+		while(!Serial.available())
+			;
+		int id = Serial.read();
+		if ('0' <= id && id <= '9')
+			id -= '0' + 0x0;
+		else
+		if ('a' <= id && id <= 'f')
+			id -= 'a' + 0xA;
+		else
+		{
+			Serial.println("?");
+			return;
+		}
+
+		Serial.println(id, HEX);
+		servos.setid(id);
+		return;
+	}
+
+	if (cmd == 'p')
+	{
+		Serial.print("p=");
+
+		for(int i = 1 ; i <= 8 ; i++)
+		{
+			int pos = servos.position(i);
+			Serial.print(" ");
+			Serial.print(pos);
+		}
+
+		Serial.println();
+		return;
+	}
+
+	Serial.println("?");
 }

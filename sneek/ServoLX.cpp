@@ -126,8 +126,8 @@ int ServoLX::recv()
 		return -1;
 	}
 	
-	Serial.print(len);
-	Serial.println(" bytes ok");
+	//Serial.print(len);
+	//Serial.println(" bytes ok");
 	return len;
 }
 
