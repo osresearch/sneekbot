@@ -1,8 +1,20 @@
 /** \file
  * LX-16A bus servo control library.
  *
- * Could use the hardware serial port on the Teensy, but we want
- * to be able to turn the pins on and off, so we're using software serial.
+ * Using the hardware serial port on the Teensy.
+ * Pinout:
+ *
+ *  5V  -----------------
+ *        10K
+ *  TX  -/\/\/---+-------
+ *               |
+ *  RX   --------+   +---
+ *                   |
+ *  Gnd  ------------+
+ *
+ *
+ * Motor angles are from 0-1000 covering 240 degrees == 0.24 deg/tick
+ * Read angles seem to match write angles
  */
 #include "ServoLX.h"
 #include <Arduino.h>
@@ -12,8 +24,14 @@
 // Commands from the data sheet are in decimal, not hex
 #define SERVOLX_ID_WRITE 13
 #define SERVOLX_ID_READ 14
+
 #define SERVOLX_POS_READ 28
-#define SERVOLX_LOAD_OR_UNLOAD_WRITE 31
+#define SERVOLX_MOVE_TIME_WRITE 1
+#define SERVOLX_MOVE_TIME_WAIT_WRITE 7
+#define SERVOLX_MOVE_START 11
+#define SERVOLX_MOVE_STOP 12
+
+#define SERVOLX_LOAD_OR_UNLOAD_WRITE 31 // used to enable motor
 
 
 void ServoLX::begin()
@@ -161,14 +179,14 @@ void ServoLX::enable(uint8_t which, uint8_t mode)
 }
 
 
-int ServoLX::position(uint8_t which)
+int ServoLX::position_raw(uint8_t which)
 {
 	send(which, SERVOLX_POS_READ);
 
 	while(1)
 	{
 		if (recv() < 0)
-			return -1;
+			return SERVOLX_TIMEOUT;
 
 		if (msg->cmd != SERVOLX_POS_READ)
 			continue;
@@ -177,8 +195,53 @@ int ServoLX::position(uint8_t which)
 		if (msg->len == 3)
 			continue;
 
-		return (msg->buf[1] << 8) | msg->buf[0];
+		return (int16_t) (msg->buf[1] << 8) | msg->buf[0];
 	}
+}
+
+
+float ServoLX::position(uint8_t which)
+{
+	int raw = position_raw(which);
+	if (raw == (int) SERVOLX_TIMEOUT)
+		return SERVOLX_TIMEOUT;
+	return raw * 0.24 - 120.0;
+}
+
+
+void ServoLX::move(uint8_t which, float angle, int ms, bool wait)
+{
+	// keep it from slicing the cables
+	const float angle_limit = 90;
+
+	if (angle < -angle_limit)
+		angle = -angle_limit;
+	else
+	if (angle > +angle_limit)
+		angle = +angle_limit;
+
+	uint16_t cmd_angle = (uint16_t)((angle + 120) * 0.24);
+	uint8_t buf[] = {
+		(uint8_t)(cmd_angle >> 0),
+		(uint8_t)(cmd_angle >> 8),
+	};
+
+	send(
+		which,
+		wait ? SERVOLX_MOVE_TIME_WAIT_WRITE : SERVOLX_MOVE_TIME_WRITE,
+		buf,
+		sizeof(buf)
+	);
+}
+
+void ServoLX::start()
+{
+	send(SERVOLX_BROADCAST, SERVOLX_MOVE_START);
+}
+
+void ServoLX::stop()
+{
+	send(SERVOLX_BROADCAST, SERVOLX_MOVE_STOP);
 }
 
 int ServoLX::getid()
@@ -203,35 +266,3 @@ void ServoLX::setid(uint8_t which)
 {
 	send(SERVOLX_BROADCAST, SERVOLX_ID_WRITE, &which, 1);
 }
-
-#if 0
-	// set the id of a SINGLE connected servo
-	void setid(int id);
-
-	// move a single servo
-	void move(int ms, int which, int position);
-
-	// move all servos in a synchronized fashion
-	void move(int ms, const int positions[]);
-
-	// read the temperature, volts or position of all servos
-	void temp(int temps[]);
-	void volts(int volts[]);
-	void position(int positions[]);
-
-	// read the position of one servo
-	int position(int which);
-
-	// enable all, one or specific servos
-	void enable(void);
-	void enable(int which);
-	void enable(const int which[]);
-
-	// disable all or one specific servos
-	void disable(void);
-	void disable(int which);
-
-private:
-	const int num_servos;
-};
-#endif

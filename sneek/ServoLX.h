@@ -36,19 +36,24 @@ public:
 
 	void begin();
 
-	// set the id of a SINGLE connected servo
-	void setid(uint8_t id);
+	// get/set the id of a SINGLE connected servo
+	// do not use this command if there are multiple servos connected
 	int getid();
+	void setid(uint8_t id);
 
 	// move a single servo or queue a movement
-	void move(uint8_t which, int ms, int position);
-	void move_wait(uint8_t which, int ms, int position);
-	void move_start();
+	void move(uint8_t which, float position, int ms = 10, bool wait = false);
+
+	// start/stop any queued movement
+	void start();
+	void stop();
 
 	// read the temperature, volts or position of a servos
+	// SERVOLX_TIMEOUT (or NaN) if there is no response
 	int temp(uint8_t which);
 	int volts(uint8_t which);
-	int position(uint8_t which);
+	float position(uint8_t which); // degrees
+	int position_raw(uint8_t which); // raw hex
 
 	// enable/disable the servos
 	void enable(uint8_t which = SERVOLX_BROADCAST, uint8_t mode = 1);
