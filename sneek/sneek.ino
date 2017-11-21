@@ -7,6 +7,43 @@
 
 ServoLX servos(7,8);
 
+typedef struct
+{
+	uint8_t index;
+	uint8_t reverse;
+	int16_t offset;
+} servo_t;
+
+servo_t joints[] = {
+	{ 7, 0, 0 }, // four tail segments
+	{ 8, 0, 0 },
+	{ 4, 0, 0 },
+	{ 5, 0, 0 },
+	{ 1, 0, -20 }, // two head segments
+	{ 2, 0, 0 },
+	{ 3, 0, 0 }, // two neck segments
+	{ 6, 0, 0 },
+};
+
+const unsigned num_servos = sizeof(joints) / sizeof(joints[0]);
+
+void pose(int ms, const float * angles)
+{
+	for(unsigned i = 0 ; i < num_servos ; i++)
+	{
+		const servo_t * const s = &joints[i];
+		servos.move(
+			s->index,
+			angles[i] * (s->reverse ? 1 : -1) + s->offset,
+			ms,
+			1
+		);
+	}
+
+	servos.start();
+}
+
+
 void setup()
 {
 	servos.begin();
@@ -39,10 +76,11 @@ uint32_t last_position;
 void wave()
 {
 	float t = 0;
-	float mag = 60;
-	float phase_step = 30 * M_PI / 180; // rad/joint
-	float rate = 90 * M_PI / 180; // rad/sec
+	float mag = 20;
+	float phase_step = (270.0/8) * M_PI / 180; // rad/joint
+	float rate = 220 * M_PI / 180; // rad/sec
 	float last_step = millis();
+	float angles[num_servos];
 
 	while(1)
 	{
@@ -54,16 +92,23 @@ void wave()
 		}
 
 		Serial.print("c");
-		for(uint8_t i = 1 ; i <= 8 ; i+=1)
+		for(uint8_t i = 0 ; i < num_servos ; i++)
 		{
 			float angle = mag * sin(t + i * phase_step);
-			if(0 && (i/2) % 2 == 0)
-				angle = -angle;
-			servos.move(i, angle, 0, 1);
+
+			// keep the neck level
+			if (i == 6)
+				angle = -0;
+			if (i == 7)
+				angle = +0;
+
+			angles[i] = angle;
 			Serial.print(" ");
 			Serial.print(angle, 2);
 		}
 		Serial.println();
+
+		pose(10, angles);
 
 		uint32_t now = millis();
 		float dt = (now - last_step) / 1000.0;
@@ -188,6 +233,15 @@ void loop()
 			servos.move(i, 0, 2000, true);
 		servos.enable();
 		servos.start();
+		return;
+	}
+
+	if (cmd == '1')
+	{
+		Serial.println("STRAIGHT1");
+		float angles[num_servos] = {};
+		servos.enable();
+		pose(2000, angles);
 		return;
 	}
 
