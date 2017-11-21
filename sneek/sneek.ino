@@ -3,6 +3,7 @@
  */
 
 #include "ServoLX.h"
+#include <math.h>
 
 ServoLX servos(7,8);
 
@@ -30,6 +31,56 @@ void report_position()
 }
 
 uint32_t last_position;
+
+/*
+ * Undulating motion.
+ * Wavelength for the wave and phase shift for each joint
+ */
+void wave()
+{
+	float t = 0;
+	float mag = 60;
+	float phase_step = 30 * M_PI / 180; // rad/joint
+	float rate = 90 * M_PI / 180; // rad/sec
+	float last_step = millis();
+
+	while(1)
+	{
+		if (Serial.available())
+		{
+			Serial.read();
+			servos.stop();
+			return;
+		}
+
+		Serial.print("c");
+		for(uint8_t i = 1 ; i <= 8 ; i+=1)
+		{
+			float angle = mag * sin(t + i * phase_step);
+			if(0 && (i/2) % 2 == 0)
+				angle = -angle;
+			servos.move(i, angle, 0, 1);
+			Serial.print(" ");
+			Serial.print(angle, 2);
+		}
+		Serial.println();
+
+		uint32_t now = millis();
+		float dt = (now - last_step) / 1000.0;
+		last_step = now;
+
+		t += rate * dt;
+		if (t > 2 * M_PI)
+			t = 0;
+
+		servos.start();
+
+		report_position();
+
+		//delay(dt);
+	}
+}
+
 
 void loop()
 {
@@ -177,6 +228,13 @@ void loop()
 			servos.move(i, (i % 3 == 1) ? 90 : -90, 5000, true);
 		servos.enable();
 		servos.start();
+		return;
+	}
+
+	if (cmd == 'w')
+	{
+		Serial.println("wave");
+		wave();
 		return;
 	}
 
