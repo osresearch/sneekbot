@@ -4,13 +4,12 @@
  * Using the hardware serial port on the Teensy.
  * Pinout:
  *
- *  5V  -----------------
  *        10K
- *  TX  -/\/\/---+-------
+ *  TX  -/\/\/---+
  *               |
- *  RX   --------+   +---
- *                   |
- *  Gnd  ------------+
+ *  RX   --------+-------
+ *  5V  -----------------
+ *  Gnd  ----------------
  *
  *
  * Motor angles are from 0-1000 covering 240 degrees == 0.24 deg/tick
@@ -209,18 +208,9 @@ float ServoLX::position(uint8_t which)
 }
 
 
-void ServoLX::move(uint8_t which, float angle, int ms, bool wait)
+
+void ServoLX::move_raw(uint8_t which, uint16_t cmd_angle, int ms, bool wait)
 {
-	// keep it from slicing the cables
-	const float angle_limit = 90;
-
-	if (angle < -angle_limit)
-		angle = -angle_limit;
-	else
-	if (angle > +angle_limit)
-		angle = +angle_limit;
-
-	uint16_t cmd_angle = (uint16_t)((angle + 120) / 0.24);
 	uint8_t buf[] = {
 		(uint8_t)(cmd_angle >> 0),
 		(uint8_t)(cmd_angle >> 8),
@@ -234,6 +224,22 @@ void ServoLX::move(uint8_t which, float angle, int ms, bool wait)
 		buf,
 		sizeof(buf)
 	);
+}
+
+
+void ServoLX::move(uint8_t which, float angle, int ms, bool wait)
+{
+	// keep it from slicing the cables
+	const float angle_limit = 90;
+
+	if (angle < -angle_limit)
+		angle = -angle_limit;
+	else
+	if (angle > +angle_limit)
+		angle = +angle_limit;
+
+	uint16_t cmd_angle = (uint16_t)((angle + 120) / 0.24);
+	move_raw(which, cmd_angle, ms, wait);
 }
 
 void ServoLX::start()

@@ -7,34 +7,33 @@
 
 ServoLX servos(7,8);
 
-typedef struct
-{
-	uint8_t index;
-	uint8_t reverse;
-	int16_t offset;
-} servo_t;
+#define NUM_SERVOS 8
 
-servo_t joints[] = {
-	{ 7, 0, 0 }, // four tail segments
-	{ 8, 0, 0 },
-	{ 4, 0, 0 },
-	{ 5, 0, 0 },
-	{ 1, 0, -20 }, // two head segments
-	{ 2, 0, 0 },
-	{ 3, 0, 0 }, // two neck segments
-	{ 6, 0, 0 },
+uint16_t poses[][NUM_SERVOS] = {
+ { 500,500,500,500,500,500,500,500, }, // center all servos
+ { 566,310,418,499,548,552,423,522, }, // straight up
+ { 613,336,414,499,593,551,423,524, }, // shift right
+ { 635,319,331,499,505,552,423,523, }, // lean right
+ { 636,318,330,337,505,551,422,700, }, // lift left foot
+ { 636,351,423,336,620,369,582,703, }, // step left
+ { 635,267,419,423,630,369,497,703, }, // weight left foot
+ { 630,266,383,483,576,499,461,533, },  // lean left
+
+ // 
+ { 1078,267,368,491,519,516,491,486, }, // lean left
 };
 
-const unsigned num_servos = sizeof(joints) / sizeof(joints[0]);
 
-void pose(int ms, const float * angles)
+void pose(int ms, const uint16_t * const pose_cmd)
 {
-	for(unsigned i = 0 ; i < num_servos ; i++)
+	for(unsigned i = 0 ; i < NUM_SERVOS ; i++)
 	{
-		const servo_t * const s = &joints[i];
-		servos.move(
-			s->index,
-			angles[i] * (s->reverse ? 1 : -1) + s->offset,
+		uint16_t cmd = pose_cmd[i];
+		Serial.print(" ");
+		Serial.print(cmd);
+		servos.move_raw(
+			i + 1,
+			cmd,
 			ms,
 			1
 		);
@@ -55,77 +54,19 @@ void setup()
 
 void report_position()
 {
-	Serial.print("p");
+	Serial.print("p={");
 
 	for(int i = 1 ; i <= 8 ; i++)
 	{
-		float pos = servos.position(i);
-		Serial.print(" ");
-		Serial.print(pos, 2);
+		int pos = servos.position_raw(i);
+		Serial.print(pos);
+		Serial.print(",");
 	}
 
-	Serial.println();
+	Serial.println("}");
 }
 
 uint32_t last_position;
-
-/*
- * Undulating motion.
- * Wavelength for the wave and phase shift for each joint
- */
-void wave()
-{
-	float t = 0;
-	float mag = 20;
-	float phase_step = (270.0/8) * M_PI / 180; // rad/joint
-	float rate = 220 * M_PI / 180; // rad/sec
-	float last_step = millis();
-	float angles[num_servos];
-
-	while(1)
-	{
-		if (Serial.available())
-		{
-			Serial.read();
-			servos.stop();
-			return;
-		}
-
-		Serial.print("c");
-		for(uint8_t i = 0 ; i < num_servos ; i++)
-		{
-			float angle = mag * sin(t + i * phase_step);
-
-			// keep the neck level
-			if (i == 6)
-				angle = -0;
-			if (i == 7)
-				angle = +0;
-
-			angles[i] = angle;
-			Serial.print(" ");
-			Serial.print(angle, 2);
-		}
-		Serial.println();
-
-		pose(10, angles);
-
-		uint32_t now = millis();
-		float dt = (now - last_step) / 1000.0;
-		last_step = now;
-
-		t += rate * dt;
-		if (t > 2 * M_PI)
-			t = 0;
-
-		servos.start();
-
-		report_position();
-
-		//delay(dt);
-	}
-}
-
 
 void loop()
 {
@@ -226,71 +167,20 @@ void loop()
 		return;
 	}
 
-	if (cmd == '0')
+	if ('0' <= cmd && cmd <= '9')
 	{
-		Serial.println("STRAIGHT");
-		for(uint8_t i = 1 ; i <= 8 ; i++)
-			servos.move(i, 0, 2000, true);
+
 		servos.enable();
+
+		Serial.print("pose ");
+		Serial.print(cmd - '0');
+		pose(1000, poses[cmd - '0']);
+		Serial.println();
+
 		servos.start();
 		return;
 	}
 
-	if (cmd == '1')
-	{
-		Serial.println("STRAIGHT1");
-		float angles[num_servos] = {};
-		servos.enable();
-		pose(2000, angles);
-		return;
-	}
-
-	if (cmd == '9')
-	{
-		Serial.println("CURL");
-		for(uint8_t i = 1 ; i <= 8 ; i++)
-			servos.move(i, -90, 5000, true);
-		servos.enable();
-		servos.start();
-		return;
-	}
-
-	if (cmd == '8')
-	{
-		Serial.println("CURL2");
-		for(uint8_t i = 1 ; i <= 8 ; i++)
-			servos.move(i, i % 2 ? 90 : -90, 5000, true);
-		servos.enable();
-		servos.start();
-		return;
-	}
-		
-	if (cmd == '7')
-	{
-		Serial.println("WRAP");
-		for(uint8_t i = 1 ; i <= 8 ; i++)
-			servos.move(i, (i % 3 == 2) ? 90 : -90, 5000, true);
-		servos.enable();
-		servos.start();
-		return;
-	}
-
-	if (cmd == '6')
-	{
-		Serial.println("WRAP2");
-		for(uint8_t i = 1 ; i <= 8 ; i++)
-			servos.move(i, (i % 3 == 1) ? 90 : -90, 5000, true);
-		servos.enable();
-		servos.start();
-		return;
-	}
-
-	if (cmd == 'w')
-	{
-		Serial.println("wave");
-		wave();
-		return;
-	}
 
 
 	Serial.println("?");

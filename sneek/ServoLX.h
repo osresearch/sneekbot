@@ -42,7 +42,8 @@ public:
 	void setid(uint8_t id);
 
 	// move a single servo or queue a movement
-	void move(uint8_t which, float position, int ms = 10, bool wait = false);
+	void move_raw(uint8_t which, uint16_t position, int ms = 10, bool wait = false);
+	void move(uint8_t which, float angle, int ms = 10, bool wait = false);
 
 	// start/stop any queued movement
 	void start();
