@@ -30,6 +30,8 @@
 #define SERVOLX_MOVE_START 11
 #define SERVOLX_MOVE_STOP 12
 
+#define SERVOLX_MOTOR_MODE_WRITE 29
+
 #define SERVOLX_LOAD_OR_UNLOAD_WRITE 31 // used to enable motor
 
 
@@ -273,4 +275,34 @@ int ServoLX::getid()
 void ServoLX::setid(uint8_t which)
 {
 	send(SERVOLX_BROADCAST, SERVOLX_ID_WRITE, &which, 1);
+}
+
+
+typedef struct {
+	uint8_t mode;
+	uint8_t unused;
+	uint8_t speed_low;
+	uint8_t speed_hi;
+} speed_msg_t;
+
+
+void ServoLX::speed(uint8_t which, int16_t speed)
+{
+	speed_msg_t msg = {
+		1, // motor mode
+		0,
+		(uint8_t)((speed >> 0) & 0xFF),
+		(uint8_t)((speed >> 8) & 0xFF),
+	};
+
+	send(which, SERVOLX_MOTOR_MODE_WRITE, (const uint8_t*) &msg, sizeof(msg));
+}
+
+
+void ServoLX::servo_mode(uint8_t which)
+{
+	speed_msg_t msg = {
+		0, // servo mode
+	};
+	send(which, SERVOLX_MOTOR_MODE_WRITE, (const uint8_t*) &msg, sizeof(msg));
 }

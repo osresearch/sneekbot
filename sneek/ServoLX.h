@@ -62,6 +62,10 @@ public:
 		enable(which, 0);
 	}
 
+	// motor mode, -1000 to 1000 speed
+	void speed(uint8_t which, int16_t speed);
+	void servo_mode(uint8_t which);
+
 private:
 	const int rx_pin;
 	const int tx_pin;
